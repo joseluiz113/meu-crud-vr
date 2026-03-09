@@ -1,100 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
     <meta charset="utf-8">
-    <title>CRUD VR - Montes</title>
+    <title>Seguradora VR - Luiz</title>
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <style>
-        #ui { position: absolute; top: 20px; left: 20px; z-index: 1000; background: rgba(0,0,0,0.8); color: gold; padding: 20px; border-radius: 10px; font-family: sans-serif; border: 1px solid gold; }
-        input, button { margin-top: 10px; display: block; width: 100%; padding: 5px; }
-        button { cursor: pointer; background: gold; border: none; font-weight: bold; }
+        #ui-controles { 
+            position: absolute; top: 15px; left: 15px; z-index: 1000; 
+            background: rgba(0, 20, 40, 0.95); color: #00f2ff; 
+            padding: 20px; border-radius: 12px; font-family: 'Segoe UI', sans-serif;
+            border: 2px solid #00f2ff; width: 250px; box-shadow: 0 0 15px #00f2ff;
+        }
+        input, button { width: 100%; margin: 8px 0; padding: 10px; border-radius: 6px; border: 1px solid #00f2ff; background: #001a33; color: white; }
+        button { background: #00f2ff; color: #001a33; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #0099cc; box-shadow: 0 0 10px #00f2ff; }
+        .instrucao { font-size: 10px; color: #888; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <h2 style="margin:0">MONTES VR CRUD</h2>
-        <input type="hidden" id="editIndex" value="-1">
-        <label>Cor do Objeto:</label>
-        <input type="text" id="objColor" placeholder="ex: red, blue, #FF00FF">
-        <button id="btnSave" onclick="handleSave()">Salvar (POST/PUT)</button>
-        <button onclick="clearAll()" style="background: #ff4444; color: white;">Limpar Tudo</button>
-        <p><small>Dica: Clique no objeto para editar/deletar</small></p>
+    <div id="ui-controles">
+        <h2 style="margin:0 0 10px 0; text-align:center;">FROTA VR</h2>
+        <input type="hidden" id="edit-id" value="-1">
+        <input type="text" id="placa" placeholder="Placa (ex: LUIZ-2026)">
+        <input type="text" id="cor" placeholder="Cor (ex: gold, red, #55ff00)">
+        <button onclick="salvar()">SALVAR (POST/PUT)</button>
+        <p class="instrucao">CLIQUE NO VEÍCULO PARA EDITAR OU DELETAR</p>
     </div>
 
     <a-scene cursor="rayOrigin: mouse">
-        <a-sky color="#111"></a-sky>
-        <a-entity id="container"></a-entity>
-        <a-camera position="0 1.6 0"></a-camera>
+        <a-sky color="#020205"></a-sky>
+        <a-grid position="0 0 0" material="color: #111; opacity: 0.5"></a-grid>
+        <a-light type="ambient" color="#444"></a-light>
+        <a-light type="point" intensity="1" position="2 4 4"></a-light>
+
+        <a-entity id="frota-container"></a-entity>
+
+        <a-camera position="0 1.6 2"></a-camera>
     </a-scene>
 
     <script>
-        const container = document.querySelector('#container');
-        const inputColor = document.querySelector('#objColor');
-        const inputIndex = document.querySelector('#editIndex');
-        const btnSave = document.querySelector('#btnSave');
+        const container = document.querySelector('#frota-container');
+        const inPlaca = document.querySelector('#placa');
+        const inCor = document.querySelector('#cor');
+        const inId = document.querySelector('#edit-id');
 
-        // READ - Listar objetos
-        function render() {
+        // MOCKS (Dados iniciais obrigatórios)
+        if (!localStorage.getItem('seguradora_luiz')) {
+            localStorage.setItem('seguradora_luiz', JSON.stringify([
+                { placa: "VR-TECH", cor: "cyan" },
+                { placa: "CS-2026", cor: "gold" }
+            ]));
+        }
+
+        // READ (GET)
+        function atualizarCena() {
             container.innerHTML = '';
-            const data = JSON.parse(localStorage.getItem('itens_vr') || '[]');
-            
-            data.forEach((item, index) => {
-                const el = document.createElement('a-box');
-                el.setAttribute('color', item.color);
-                el.setAttribute('position', `${index * 1.5 - 2} 1.5 -4`);
-                el.setAttribute('animation', "property: rotation; to: 0 360 0; loop: true; dur: 4000");
+            const frota = JSON.parse(localStorage.getItem('seguradora_luiz'));
 
-                // Evento para Editar ou Deletar (Update/Delete)
-                el.addEventListener('click', () => {
-                    if(confirm("Deseja EDITAR? (OK) ou DELETAR? (Cancelar)")) {
-                        // Modo UPDATE
-                        inputColor.value = item.color;
-                        inputIndex.value = index;
-                        btnSave.innerText = "Atualizar (PUT)";
+            frota.forEach((carro, index) => {
+                const entity = document.createElement('a-entity');
+                // Posicionamento dinâmico em linha
+                entity.setAttribute('position', `${(index * 2.2) - 1} 0.6 -3`);
+                entity.setAttribute('animation', `property: position; to: ${(index * 2.2) - 1} 0.8 -3; dir: alternate; dur: 1500; loop: true; easing: easeInOutSine`);
+
+                // Corpo Refinado
+                const corpo = document.createElement('a-box');
+                corpo.setAttribute('color', carro.cor);
+                corpo.setAttribute('scale', '1.3 0.4 2');
+                corpo.setAttribute('material', 'metalness: 0.7; roughness: 0.2; emissive: ' + carro.cor + '; emissiveIntensity: 0.1');
+
+                // Detalhe de Rodas
+                const pos = ["-0.5 -0.2 0.7", "0.5 -0.2 0.7", "-0.5 -0.2 -0.7", "0.5 -0.2 -0.7"];
+                pos.forEach(p => {
+                    const roda = document.createElement('a-cylinder');
+                    roda.setAttribute('radius', '0.2');
+                    roda.setAttribute('height', '0.1');
+                    roda.setAttribute('rotation', '0 0 90');
+                    roda.setAttribute('position', p);
+                    roda.setAttribute('color', '#111');
+                    corpo.appendChild(roda);
+                });
+
+                // Placa (Texto VR)
+                const txt = document.createElement('a-text');
+                txt.setAttribute('value', carro.placa);
+                txt.setAttribute('align', 'center');
+                txt.setAttribute('position', '0 0.8 0');
+                txt.setAttribute('color', 'white');
+                txt.setAttribute('width', '5');
+
+                // Eventos de CRUD (UPDATE/DELETE)
+                corpo.addEventListener('click', () => {
+                    if(confirm(`Editar veículo [${carro.placa}]? \n(OK para Editar / Cancelar para DELETAR)`)) {
+                        inPlaca.value = carro.placa;
+                        inCor.value = carro.cor;
+                        inId.value = index;
                     } else {
-                        // Modo DELETE
-                        deleteItem(index);
+                        deletar(index);
                     }
                 });
-                container.appendChild(el);
+
+                entity.appendChild(corpo);
+                entity.appendChild(txt);
+                container.appendChild(entity);
             });
         }
 
-        // CREATE & UPDATE
-        function handleSave() {
-            const color = inputColor.value || 'gray';
-            const index = parseInt(inputIndex.value);
-            let data = JSON.parse(localStorage.getItem('itens_vr') || '[]');
+        // CREATE (POST) & UPDATE (PUT)
+        function salvar() {
+            const frota = JSON.parse(localStorage.getItem('seguradora_luiz'));
+            const novoCarro = { placa: inPlaca.value || "S/P", cor: inCor.value || "white" };
+            const id = parseInt(inId.value);
 
-            if (index === -1) {
-                // POST
-                data.push({ color });
+            if (id === -1) {
+                frota.push(novoCarro); // POST
             } else {
-                // PUT
-                data[index].color = color;
-                inputIndex.value = "-1";
-                btnSave.innerText = "Salvar (POST)";
+                frota[id] = novoCarro; // PUT
+                inId.value = "-1";
             }
 
-            localStorage.setItem('itens_vr', JSON.stringify(data));
-            inputColor.value = '';
-            render();
+            localStorage.setItem('seguradora_luiz', JSON.stringify(frota));
+            inPlaca.value = ''; inCor.value = '';
+            atualizarCena();
         }
 
-        function deleteItem(index) {
-            let data = JSON.parse(localStorage.getItem('itens_vr') || '[]');
-            data.splice(index, 1);
-            localStorage.setItem('itens_vr', JSON.stringify(data));
-            render();
+        // DELETE
+        function deletar(index) {
+            const frota = JSON.parse(localStorage.getItem('seguradora_luiz'));
+            frota.splice(index, 1);
+            localStorage.setItem('seguradora_luiz', JSON.stringify(frota));
+            atualizarCena();
         }
 
-        function clearAll() {
-            localStorage.removeItem('itens_vr');
-            render();
-        }
-
-        render();
+        atualizarCena();
     </script>
 </body>
 </html>
