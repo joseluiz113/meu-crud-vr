@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>CRUD VR - Montes</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <style>
+        #ui { position: absolute; top: 20px; left: 20px; z-index: 1000; background: rgba(0,0,0,0.8); color: gold; padding: 20px; border-radius: 10px; font-family: sans-serif; border: 1px solid gold; }
+        input, button { margin-top: 10px; display: block; width: 100%; padding: 5px; }
+        button { cursor: pointer; background: gold; border: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <h2 style="margin:0">MONTES VR CRUD</h2>
+        <input type="hidden" id="editIndex" value="-1">
+        <label>Cor do Objeto:</label>
+        <input type="text" id="objColor" placeholder="ex: red, blue, #FF00FF">
+        <button id="btnSave" onclick="handleSave()">Salvar (POST/PUT)</button>
+        <button onclick="clearAll()" style="background: #ff4444; color: white;">Limpar Tudo</button>
+        <p><small>Dica: Clique no objeto para editar/deletar</small></p>
+    </div>
+
+    <a-scene cursor="rayOrigin: mouse">
+        <a-sky color="#111"></a-sky>
+        <a-entity id="container"></a-entity>
+        <a-camera position="0 1.6 0"></a-camera>
+    </a-scene>
+
+    <script>
+        const container = document.querySelector('#container');
+        const inputColor = document.querySelector('#objColor');
+        const inputIndex = document.querySelector('#editIndex');
+        const btnSave = document.querySelector('#btnSave');
+
+        // READ - Listar objetos
+        function render() {
+            container.innerHTML = '';
+            const data = JSON.parse(localStorage.getItem('itens_vr') || '[]');
+            
+            data.forEach((item, index) => {
+                const el = document.createElement('a-box');
+                el.setAttribute('color', item.color);
+                el.setAttribute('position', `${index * 1.5 - 2} 1.5 -4`);
+                el.setAttribute('animation', "property: rotation; to: 0 360 0; loop: true; dur: 4000");
+
+                // Evento para Editar ou Deletar (Update/Delete)
+                el.addEventListener('click', () => {
+                    if(confirm("Deseja EDITAR? (OK) ou DELETAR? (Cancelar)")) {
+                        // Modo UPDATE
+                        inputColor.value = item.color;
+                        inputIndex.value = index;
+                        btnSave.innerText = "Atualizar (PUT)";
+                    } else {
+                        // Modo DELETE
+                        deleteItem(index);
+                    }
+                });
+                container.appendChild(el);
+            });
+        }
+
+        // CREATE & UPDATE
+        function handleSave() {
+            const color = inputColor.value || 'gray';
+            const index = parseInt(inputIndex.value);
+            let data = JSON.parse(localStorage.getItem('itens_vr') || '[]');
+
+            if (index === -1) {
+                // POST
+                data.push({ color });
+            } else {
+                // PUT
+                data[index].color = color;
+                inputIndex.value = "-1";
+                btnSave.innerText = "Salvar (POST)";
+            }
+
+            localStorage.setItem('itens_vr', JSON.stringify(data));
+            inputColor.value = '';
+            render();
+        }
+
+        function deleteItem(index) {
+            let data = JSON.parse(localStorage.getItem('itens_vr') || '[]');
+            data.splice(index, 1);
+            localStorage.setItem('itens_vr', JSON.stringify(data));
+            render();
+        }
+
+        function clearAll() {
+            localStorage.removeItem('itens_vr');
+            render();
+        }
+
+        render();
+    </script>
+</body>
+</html>
